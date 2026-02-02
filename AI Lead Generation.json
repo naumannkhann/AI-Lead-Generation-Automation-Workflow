@@ -1,0 +1,591 @@
+{
+  "name": "AI Lead Generation",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1520,
+        -1088
+      ],
+      "id": "7bdcc357-9574-416a-9099-e0ab8d104b33",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9be0f615-ceaa-4bba-89ce-4f0ceb4608b7",
+              "name": "keyword",
+              "value": "real estate companies",
+              "type": "string"
+            },
+            {
+              "id": "3d2cc2d6-1523-4917-abfd-c2832ad49b85",
+              "name": "location",
+              "value": "United States",
+              "type": "string"
+            },
+            {
+              "id": "58d8e491-b62c-495f-b174-f76e34eef7d6",
+              "name": "results_per_search",
+              "value": 10,
+              "type": "number"
+            },
+            {
+              "id": "b6c30bf4-5132-4bc3-846e-b6ba6e023104",
+              "name": "max_searches",
+              "value": 1,
+              "type": "number"
+            },
+            {
+              "id": "e7937a3e-69c9-4a5f-96ac-af70176a3d62",
+              "name": "industry",
+              "value": "real estate",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1344,
+        -1088
+      ],
+      "id": "12fe916d-40fb-4c81-b314-9137bd814cbd",
+      "name": "Set Search Inputs"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d18baf4b-8db7-4111-b7c4-6410d97026fb",
+              "leftValue": "={{ $json.domain }}",
+              "rightValue": "gov",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -672,
+        -1088
+      ],
+      "id": "c9e9f180-881a-4712-8e75-44758768e1e2",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "jsCode": "let results = [];\n\nitems.forEach(item => {\n  if(item.json.organic_results) {\n    item.json.organic_results.forEach(result => {\n      results.push({\n        json: {\n          url: result.link,\n          title: result.title,\n          snippet: result.snippet\n        }\n      });\n    });\n  }\n});\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1008,
+        -1088
+      ],
+      "id": "091b530d-4dba-4267-94f4-1e48bc8bd550",
+      "name": "NORMALIZE RESULTS"
+    },
+    {
+      "parameters": {
+        "q": "={{$json.keyword}} \"contact us\" \"our services\" -site:.gov -site:.edu -site:.mil -site:.org",
+        "location": "={{ $json.location }}",
+        "additionalFields": {
+          "safe": "active",
+          "num": "={{ $json.results_per_search }}"
+        },
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-serpapi.serpApi",
+      "typeVersion": 1,
+      "position": [
+        -1184,
+        -1088
+      ],
+      "id": "7dd0deed-cece-436b-9bac-7774d616286a",
+      "name": "Google search",
+      "credentials": {
+        "serpApi": {
+          "id": "hrOMIS5rUUjQ6ebE",
+          "name": "SerpApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const rawUrl = (item.json.url || '').trim();\n\n  let domain = '';\n\n  if (rawUrl) {\n    const match = rawUrl.match(/https?:\\/\\/([^\\/]+)/i);\n    if (match && match[1]) {\n      domain = match[1].replace(/^www\\./, '');\n    }\n  }\n\n  return {\n    json: {\n      ...item.json,\n      domain\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        -1088
+      ],
+      "id": "d3e7317c-e73b-4e0d-a1e3-2d1c0610061b",
+      "name": "Extract Domain"
+    },
+    {
+      "parameters": {
+        "url": "=https://{{$json.cleanDomain}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (LeadGenBot/1.0; +https://example.com)"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 8000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -128,
+        -1104
+      ],
+      "id": "e2ad092c-0c9e-4b80-92f7-63c3e37c60d2",
+      "name": "Fetch Homepage",
+      "retryOnFail": false,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "34dd4d0f-5764-4a15-91dc-f7a176beef39",
+              "name": "cleanDomain",
+              "value": "={{ $json.domain }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -288,
+        -1104
+      ],
+      "id": "2fd3542d-2f97-4b83-b3ed-16bf04ba88e5",
+      "name": "Normalize Domain"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1NhZuzl2Yl5Bzj2gyIbvLCgvfa8nvwmmJmIbDeGKYXCI",
+          "mode": "list",
+          "cachedResultName": "Error Details ",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NhZuzl2Yl5Bzj2gyIbvLCgvfa8nvwmmJmIbDeGKYXCI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NhZuzl2Yl5Bzj2gyIbvLCgvfa8nvwmmJmIbDeGKYXCI/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "cleanDomain": "={{ $json.cleanDomain }}",
+            "message": "={{ $json.error.message }}",
+            "name": "={{ $json.error.name }}",
+            "stack": "={{ $json.error.stack }}",
+            "code": "={{ $json.error.code }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "cleanDomain",
+              "displayName": "cleanDomain",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "stack",
+              "displayName": "stack",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "code",
+              "displayName": "code",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        64,
+        -976
+      ],
+      "id": "1d34f4ac-9f85-40e8-883a-109b3f7950e9",
+      "name": "Error Details",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "nLiRKQQKdFosXjmF",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let results = [];\n\nitems.forEach(item => {\n  const html = item.json.data || '';\n  \n  // Regex to match emails\n  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-z]{2,}/gi;\n  const emails = html.match(emailRegex);\n  \n  if (emails) {\n    // Deduplicate\n    const uniqueEmails = [...new Set(emails)];\n    \n    uniqueEmails.forEach(email => {\n      // Skip emails that end with image/file extensions\n      if (!email.match(/\\.(png|jpg|jpeg|gif|svg)$/i)) {\n        results.push({\n          json: {\n            domain: item.json.cleanDomain,\n            email: email,\n          }\n        });\n      }\n    });\n  }\n});\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -1200
+      ],
+      "id": "74189a90-ed5f-4f85-aeb2-e711be361aca",
+      "name": "Extract Emails"
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "domain",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        -1104
+      ],
+      "id": "5183b1dd-6b0e-4c8f-b5ab-99cccde55262",
+      "name": "Remove Duplicates Domain"
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "email",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        240,
+        -1200
+      ],
+      "id": "c1b42970-ea1d-4d71-a718-19497ade417a",
+      "name": "Remove Duplicates Emails"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "43bdc3db-073a-46e6-8c79-7c4a61e1cf3c",
+              "name": "email",
+              "value": "={{ $json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "b0715a28-6067-4623-8a7a-cfedbe069e23",
+              "name": "timestamp",
+              "value": "={{$now}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        384,
+        -1200
+      ],
+      "id": "7d49883b-e26e-4b6f-9c60-714b9ad21fbe",
+      "name": "Timestamp"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1za-J4d4uPWzycTcUNmU5YWBPcCcGoS_XlsZk58h67bQ",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1za-J4d4uPWzycTcUNmU5YWBPcCcGoS_XlsZk58h67bQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Details",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1za-J4d4uPWzycTcUNmU5YWBPcCcGoS_XlsZk58h67bQ/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email": "={{ $json.email }}",
+            "Timestamp": "={{ $json.timestamp }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        544,
+        -1200
+      ],
+      "id": "ca8e3a2f-49df-4515-9efc-8012934f1049",
+      "name": "Leads Details",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "nLiRKQQKdFosXjmF",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Set Search Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Search Inputs": {
+      "main": [
+        [
+          {
+            "node": "Google search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates Domain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NORMALIZE RESULTS": {
+      "main": [
+        [
+          {
+            "node": "Extract Domain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google search": {
+      "main": [
+        [
+          {
+            "node": "NORMALIZE RESULTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Domain": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Domain": {
+      "main": [
+        [
+          {
+            "node": "Fetch Homepage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Homepage": {
+      "main": [
+        [
+          {
+            "node": "Extract Emails",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Emails": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates Domain": {
+      "main": [
+        [
+          {
+            "node": "Normalize Domain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates Emails": {
+      "main": [
+        [
+          {
+            "node": "Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Timestamp": {
+      "main": [
+        [
+          {
+            "node": "Leads Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "becf5732-159d-4b62-95c8-e4fa9c0a81ad",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f9ca05499a65d18ad1bb67bd915d3e37f826b13f50755ca37c97d448d967f525"
+  },
+  "id": "OFgaOmJ6zAy1Q1Ep",
+  "tags": []
+}
